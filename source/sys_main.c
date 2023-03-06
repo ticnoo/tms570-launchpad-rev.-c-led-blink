@@ -74,49 +74,49 @@ uint32_t period_off; // переменная для установки врем�
 
 
 
-void delay(uint32_t time) // ���������� ���������� �������� � ����������� ������
-						  // ��� �� ������ ������� ������ (+ ��� � ������ ��� ����������� � ������)
+void delay(uint32_t time) // простейшая программная задержка в блокирующем режиме
+						  // ей в первый раз моргал светодиодом
 {
     while (time>0) time--;
 }
 
-void period_changer(void) /* ��������� ��� ����� �������
- �.�. ������ � ��������� ������� ���������� � ���, ���� �� ����������,
- ���� �� ����� ������ ��� ������ ������ */
+void period_changer(void) // процедура смены режима моргания
 {
 
-	period_state++; // ���������� ��� �������� �������� ������
-	if (period_state == 4) period_state = 1; // ��������� ������
+	period_state++;
+	if (period_state == 4) period_state = 1; // сброс режима для цикличности
 
-	switch (period_state) // ����� �������
+	switch (period_state) // сравнение для выбора времени исходя из номера режима
 	{
 		case 1:
-			period_on =  500000U; // 500 �� ��� ������� ������� 1 ���
-			period_off = 500000U; // 500 �� ��� ������� ������� 1 ���
+			period_on =  500000U; // 500 мс при частоте таймера 1 МГц
+			period_off = 500000U; // 500 мс при частоте таймера 1 МГц
 			break;
 		case 2:
-			period_on =  250000U; // 250 �� ��� ������� ������� 1 ���
-			period_off = 250000U; // 250 �� ��� ������� ������� 1 ���
+			period_on =  250000U; // 250 мс при частоте таймера 1 МГц
+			period_off = 250000U; // 250 мс при частоте таймера 1 МГц
 			break;
 		case 3:
-			period_on =  100000U; // 100 �� ��� ������� ������� 1 ���
-			period_off = 900000U; // 900 �� ��� ������� ������� 1 ���
+			period_on =  100000U; // 100 мс при частоте таймера 1 МГц
+			period_off = 900000U; // 900 мс при частоте таймера 1 МГц
 			break;
 	}
 
-	rtiStopCounter(rtiCOUNTER_BLOCK0); // ��������� ��� ������
-	rtiResetCounter(rtiCOUNTER_BLOCK0); // �����
+	rtiStopCounter(rtiCOUNTER_BLOCK0); // остановка таймера
+	rtiResetCounter(rtiCOUNTER_BLOCK0); // сброс
 
-	rtiREG1->CMP[0U].COMPx = period_on; // ��������� ����� ��������� �������� ����������� ����� ������
-	rtiREG1->CMP[1U].COMPx = period_on + period_off; // �.�. rtiSetPeriod ������ �����,
-										// ������� ������������ ����� ������������ �����������
+	rtiREG1->CMP[0U].COMPx = period_on; // установка начального значения прямо в регистр
+	rtiREG1->CMP[1U].COMPx = period_on + period_off;
+
+	/* т.к. rtiSetPeriod меняет значение, которое прибавляется к компаратору, таймер
+	 * сбрасывается и изменяется так же начальное значение */
 
 	rtiSetPeriod(rtiCOMPARE0, period_on + period_off); //
 	rtiSetPeriod(rtiCOMPARE1, period_on + period_off); //
 
-	gioSetBit(gioPORTA, 2, 1); // ��������� �����
+	gioSetBit(gioPORTA, 2, 1); // включение диода
 
-	rtiStartCounter(rtiCOUNTER_BLOCK0); // ������������� �������
+	rtiStartCounter(rtiCOUNTER_BLOCK0); // запуск таймера
 }
 
 
@@ -129,13 +129,13 @@ void main(void)
 
 	systemInit();
 	gioInit();
-	rtiInit(); // ������������� (��� ����� HalCoGen)
-	_enable_IRQ(); // ���������� ������ ����������
+	rtiInit(); // инициализация (все через HalCoGen)
+	_enable_IRQ(); // разрешение прерывания
 
-	rtiEnableNotification(rtiNOTIFICATION_COMPARE0); // ���������� ���������� ��� ������� �����������
-	rtiEnableNotification(rtiNOTIFICATION_COMPARE1); // ��� ������� �����������
+	rtiEnableNotification(rtiNOTIFICATION_COMPARE0); // разрешение прерывания для первого компаратора
+	rtiEnableNotification(rtiNOTIFICATION_COMPARE1); // для второго компаратора
 
-	gioEnableNotification(gioPORTA, 7); // ���������� ���������� �� ������
+	gioEnableNotification(gioPORTA, 7); // разрешение прерывания кнопки
 
 while(1)
 {
@@ -150,9 +150,9 @@ while(1)
 
 /* USER CODE BEGIN (4) */
 
-void rtiNotification(uint32_t Notification) // �������, ���������� ��� ������������ ���������� �������
+void rtiNotification(uint32_t Notification) // обработчик прерывания таймера
 {
-	switch (Notification) // ���������, ����� ���������� ������ ����������
+	switch (Notification) // сравнение для определения, какой компаратор вызвал прерывание
 	{
 		case 1U:
 			gioSetBit(gioPORTA, 2, 0);
@@ -163,15 +163,14 @@ void rtiNotification(uint32_t Notification) // �������, ����
 	}
 }
 
-void gioNotification(gioPORT_t *port, uint32 bit) // �������, ���������� ����������� �� ������
+void gioNotification(gioPORT_t *port, uint32 bit) // обработчик прерывания кнопки
 {
-// �.�. ������ ����, ���������, ��� ����������, ����� ���������, �� �����
 
-	gioDisableNotification(gioPORTA, 7);	// ������ ���������� ������ ��� �� ��� �������� ����������
-											// �� ������ ���������� ����������
-	period_changer();	// ��������� ��� ����� �������
-	delay(500000);		// ��������� �������� � ����������� ������ ��� ���������� ��������
-	gioEnableNotification(gioPORTA, 7);		// ���������� ���������� ������ ��� ����������� ������������
+	gioDisableNotification(gioPORTA, 7);	// запрет прерывания кнопки что бы дребезг контактов
+											// не вызвал огромное количество прерываний
+	period_changer();	// процедура смены режима
+	delay(500000);		// задержка для устранения дребезка
+	gioEnableNotification(gioPORTA, 7);		// разрешение прерываний для последующего срабатывания кнопки
 
 }
 
