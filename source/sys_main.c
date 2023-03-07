@@ -72,6 +72,7 @@ uint8_t period_state = 0; // переменная для контроля реж
 uint32_t period_on; // переменная для установки времени включения
 uint32_t period_off; // переменная для установки времени отключения
 
+bool buttom_pressed = false; // флаг нажатия кнопки
 
 
 void delay(uint32_t time) // простейшая программная задержка в блокирующем режиме
@@ -139,7 +140,13 @@ void main(void)
 
 while(1)
 {
-
+	if (buttom_pressed == true)
+	{
+		buttom_pressed = false; // флаг нажатия кнопки
+		period_changer();	// процедура смены режима
+		delay(500000);		// задержка для устранения дребезка
+		gioEnableNotification(gioPORTA, 7);		// разрешение прерываний для последующего срабатывания кнопки
+	}	// т.к. задание только поморгать дидом, задержа тут, а не в процедуре смены режима
 }
 
 /* USER CODE END */
@@ -168,9 +175,7 @@ void gioNotification(gioPORT_t *port, uint32 bit) // обработчик пре
 
 	gioDisableNotification(gioPORTA, 7);	// запрет прерывания кнопки что бы дребезг контактов
 											// не вызвал огромное количество прерываний
-	period_changer();	// процедура смены режима
-	delay(500000);		// задержка для устранения дребезка
-	gioEnableNotification(gioPORTA, 7);		// разрешение прерываний для последующего срабатывания кнопки
+	buttom_pressed = true;					// флаг нажатия кнопки
 
 }
 
