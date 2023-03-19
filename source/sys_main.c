@@ -72,7 +72,7 @@ uint8_t period_state = 0; // переменная для контроля реж
 uint32_t period_on; // переменная для установки времени включения
 uint32_t period_off; // переменная для установки времени отключения
 
-bool buttom_pressed = false; // флаг нажатия кнопки
+bool buttom_pressed = false; // флаг нажатия кнопки 123
 
 
 void delay(uint32_t time) // простейшая программная задержка в блокирующем режиме
